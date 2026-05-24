@@ -1,6 +1,6 @@
 # OS Upgrade Checklist
 
-Oracle Linux 7.9에서 8.10으로 업그레이드하는 흐름을 공개용으로 정리한 체크리스트입니다.
+Oracle Linux 7.9에서 8.10으로 업그레이드하는 흐름을 운영 절차 관점으로 정리한 체크리스트입니다.
 
 ## 1. Pre-check
 
@@ -41,6 +41,10 @@ Oracle Linux 7.9에서 8.10으로 업그레이드하는 흐름을 공개용으�
 - backup job and log path check
 - monitoring metric 수집 여부 확인
 
-## Public Sanitization
+## 설정값 확인 관점
 
-원본 작업 기록의 내부 서버명, IP, 계정, 비밀번호, secret, 운영 로그는 제거했습니다.
+- `fstab`: boot 시 자동 mount가 필요한 filesystem인지, 네트워크 mount라면 `_netdev`가 필요한지 확인합니다.
+- `sysctl.conf`: connection 수, network buffer, file descriptor 기준이 서비스 특성에 맞는지 확인합니다.
+- `sshd_config`: 접근 정책, key 인증, root login 정책이 운영 기준에 맞는지 확인합니다.
+- `chrony.conf`: 기준 시간 서버와 sync 상태를 확인해 로그 추적 기준을 맞춥니다.
+- `nmcli profile`: NIC 이름, IP, gateway, DNS가 재부팅 이후에도 유지되는지 확인합니다.
