@@ -1,9 +1,9 @@
-# Oracle Linux Upgrade & Ceph Storage Operations Guide
+# Oracle Linux 업그레이드 및 Ceph 스토리지 운영 가이드
 
 Oracle Linux 서버 업그레이드와 Ceph 스토리지 운영을 함께 다루는 인프라 운영 가이드입니다.
 OS 기본 설정, 프록시/가용성 구성, CephFS mount, 운영 점검 항목을 하나의 흐름으로 정리했습니다.
 
-## What This Covers
+## 작업 범위
 
 - Oracle Linux 7.9에서 8.10으로 업그레이드할 때 확인해야 하는 사전/사후 점검 항목
 - LVM, fstab, NTP/Chrony, SSH, sysctl, network profile 등 Linux 기본 운영 설정
@@ -11,9 +11,23 @@ OS 기본 설정, 프록시/가용성 구성, CephFS mount, 운영 점검 항목
 - Ceph monitor, manager, OSD 구성과 CephFS mount 운영
 - 파일 백업, 이관, 재기동 이후 서비스 영향도 확인 절차
 
-## Repository Structure
+## 저장소 구성
 
 ```text
+0.linux_기본설정/
+  README.md                  # network, user, fstab, LVM, mount, SSH, sysctl 등 기본 설정
+1.기존데몬삭제/
+  README.md                  # 기존 daemon/service 정리 절차
+2.haproxy_설치/
+  README.md                  # HAProxy L4 proxy, health check, stats 설정 설명
+3.nginx_설치/
+  README.md                  # Nginx proxy/static config 운영 포인트
+4.keepalived_설치/
+  README.md                  # MASTER/BACKUP, VRRP, VIP failover 구성
+5.ceph_설정/
+  README.md                  # Ceph monitor, manager, OSD, CephFS mount 운영
+6.파일백업/
+  README.md                  # rsync 기반 파일 백업/이관 절차
 docs/
   os-upgrade-checklist.md   # OS 업그레이드 전후 점검 절차
   ceph-storage-ops.md       # Ceph 구성값과 운영 확인 명령
