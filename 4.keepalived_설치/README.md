@@ -1,6 +1,6 @@
 # Keepalived 설치 및 VIP Failover 구성
 
-Keepalived를 이용해 active/standby node 간 VIP failover를 구성하는 운영 가이드입니다.
+Keepalived를 이용해 active/standby node 간 VIP failover를 구성하는 운영 기록입니다.
 
 ## 주요 설정
 

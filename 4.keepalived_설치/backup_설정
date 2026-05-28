@@ -1,0 +1,33 @@
+sudo yum localinstall -y --disablerepo=\* *.rpm
+
+
+sudo rm /etc/keepalived/keepalived.conf
+
+sudo vi /etc/keepalived/keepalived.conf
+
+global_defs {
+    router_id rtr_0
+}
+
+vrrp_instance VI_1 {
+    state BACKUP
+    interface enp0s8 #인터페이스 수정
+    #interface bond0.1074 #인터페이스 수정
+    virtual_router_id 10
+    priority 100
+    advert_int 1
+    authentication {
+        auth_type PASS
+        auth_pass <shared-secret>
+    }
+    virtual_ipaddress {
+        <service-vip>/24 #ip 수정
+        #<service-vip>/24 #ip 수정
+    }
+}
+
+
+sudo systemctl daemon-reload
+sudo systemctl enable keepalived
+sudo systemctl start keepalived
+sudo systemctl status keepalived

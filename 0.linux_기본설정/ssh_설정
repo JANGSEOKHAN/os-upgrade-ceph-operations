@@ -1,0 +1,227 @@
+Banner /etc/ssh_banner
+
+Match User adminftp
+  ChrootDirectory %h
+  ForceCommand internal-sftp
+  PasswordAuthentication yes
+  PermitTunnel no
+  AllowAgentForwarding no
+  AllowTcpForwarding no
+  X11Forwarding no
+
+Match User userftp
+  ChrootDirectory %h
+  ForceCommand internal-sftp
+  PasswordAuthentication yes
+  PermitTunnel no
+  AllowAgentForwarding no
+  AllowTcpForwarding no
+  X11Forwarding no
+
+Match User SITE-XX-FTP
+  ChrootDirectory %h
+  ForceCommand internal-sftp
+  PasswordAuthentication yes
+  PermitTunnel no
+  AllowAgentForwarding no
+  AllowTcpForwarding no
+  X11Forwarding no
+
+Match User SITE-XX-FTP
+  ChrootDirectory %h
+  ForceCommand internal-sftp
+  PasswordAuthentication yes
+  PermitTunnel no
+  AllowAgentForwarding no
+  AllowTcpForwarding no
+  X11Forwarding no
+
+Match User SITE-XX-FTP
+  ChrootDirectory %h
+  ForceCommand internal-sftp
+  PasswordAuthentication yes
+  PermitTunnel no
+  AllowAgentForwarding no
+  AllowTcpForwarding no
+  X11Forwarding no
+
+Match User SITE-XX-FTP
+  ChrootDirectory %h
+  ForceCommand internal-sftp
+  PasswordAuthentication yes
+  PermitTunnel no
+  AllowAgentForwarding no
+  AllowTcpForwarding no
+  X11Forwarding no
+
+Match User SITE-XX-FTP
+  ChrootDirectory %h
+  ForceCommand internal-sftp
+  PasswordAuthentication yes
+  PermitTunnel no
+  AllowAgentForwarding no
+  AllowTcpForwarding no
+  X11Forwarding no
+
+Match User SITE-XX-FTP
+  ChrootDirectory %h
+  ForceCommand internal-sftp
+  PasswordAuthentication yes
+  PermitTunnel no
+  AllowAgentForwarding no
+  AllowTcpForwarding no
+  X11Forwarding no
+
+Match User SITE-XX-FTP
+  ChrootDirectory %h
+  ForceCommand internal-sftp
+  PasswordAuthentication yes
+  PermitTunnel no
+  AllowAgentForwarding no
+  AllowTcpForwarding no
+  X11Forwarding no
+
+Match User SITE-XX-FTP
+  ChrootDirectory %h
+  ForceCommand internal-sftp
+  PasswordAuthentication yes
+  PermitTunnel no
+  AllowAgentForwarding no
+  AllowTcpForwarding no
+  X11Forwarding no
+
+Match User SITE-XX-FTP
+  ChrootDirectory %h
+  ForceCommand internal-sftp
+  PasswordAuthentication yes
+  PermitTunnel no
+  AllowAgentForwarding no
+  AllowTcpForwarding no
+  X11Forwarding no
+
+Match User SITE-XX-FTP
+  ChrootDirectory %h
+  ForceCommand internal-sftp
+  PasswordAuthentication yes
+  PermitTunnel no
+  AllowAgentForwarding no
+  AllowTcpForwarding no
+  X11Forwarding no
+
+Match User SITE-XX-FTP
+  ChrootDirectory %h
+  ForceCommand internal-sftp
+  PasswordAuthentication yes
+  PermitTunnel no
+  AllowAgentForwarding no
+  AllowTcpForwarding no
+  X11Forwarding no
+
+Match User SITE-XX-FTP
+  ChrootDirectory %h
+  ForceCommand internal-sftp
+  PasswordAuthentication yes
+  PermitTunnel no
+  AllowAgentForwarding no
+  AllowTcpForwarding no
+  X11Forwarding no
+
+Match User SITE-XX-FTP
+  ChrootDirectory %h
+  ForceCommand internal-sftp
+  PasswordAuthentication yes
+  PermitTunnel no
+  AllowAgentForwarding no
+  AllowTcpForwarding no
+  X11Forwarding no
+
+Match User SITE-XX-FTP
+  ChrootDirectory %h
+  ForceCommand internal-sftp
+  PasswordAuthentication yes
+  PermitTunnel no
+  AllowAgentForwarding no
+  AllowTcpForwarding no
+  X11Forwarding no
+
+Match User SITE-XX-FTP
+  ChrootDirectory %h
+  ForceCommand internal-sftp
+  PasswordAuthentication yes
+  PermitTunnel no
+  AllowAgentForwarding no
+  AllowTcpForwarding no
+  X11Forwarding no
+
+Match User SITE-XX-FTP
+  ChrootDirectory %h
+  ForceCommand internal-sftp
+  PasswordAuthentication yes
+  PermitTunnel no
+  AllowAgentForwarding no
+  AllowTcpForwarding no
+  X11Forwarding no
+
+Match User SITE-XX-FTP
+  ChrootDirectory %h
+  ForceCommand internal-sftp
+  PasswordAuthentication yes
+  PermitTunnel no
+  AllowAgentForwarding no
+  AllowTcpForwarding no
+  X11Forwarding no
+
+Match User SITE-XX-FTP
+  ChrootDirectory %h
+  ForceCommand internal-sftp
+  PasswordAuthentication yes
+  PermitTunnel no
+  AllowAgentForwarding no
+  AllowTcpForwarding no
+  X11Forwarding no
+
+Match User SITE-XX-FTP
+  ChrootDirectory %h
+  ForceCommand internal-sftp
+  PasswordAuthentication yes
+  PermitTunnel no
+  AllowAgentForwarding no
+  AllowTcpForwarding no
+  X11Forwarding no
+
+Match User SITE-XX-FTP
+  ChrootDirectory %h
+  ForceCommand internal-sftp
+  PasswordAuthentication yes
+  PermitTunnel no
+  AllowAgentForwarding no
+  AllowTcpForwarding no
+  X11Forwarding no
+
+Match User SITE-XX-FTP
+  ChrootDirectory %h
+  ForceCommand internal-sftp
+  PasswordAuthentication yes
+  PermitTunnel no
+  AllowAgentForwarding no
+  AllowTcpForwarding no
+  X11Forwarding no
+
+Match User SITE-XX-FTP
+  ChrootDirectory %h
+  ForceCommand internal-sftp
+  PasswordAuthentication yes
+  PermitTunnel no
+  AllowAgentForwarding no
+  AllowTcpForwarding no
+  X11Forwarding no
+
+Match User SITE-XX-FTP
+  ChrootDirectory %h
+  ForceCommand internal-sftp
+  PasswordAuthentication yes
+  PermitTunnel no
+  AllowAgentForwarding no
+  AllowTcpForwarding no
+  X11Forwarding no
+

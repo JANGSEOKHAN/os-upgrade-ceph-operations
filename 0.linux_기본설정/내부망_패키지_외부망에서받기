@@ -1,0 +1,8 @@
+yum history
+
+yum history info 6 | grep Install | awk '{print $2}' > ceph_144_list.txt
+
+yum install -y yum-utils   # yumdownloader 제공
+mkdir -p /root/ceph2
+
+yumdownloader --destdir=/root/ceph2 $(cat ceph_144_list.txt)

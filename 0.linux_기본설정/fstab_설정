@@ -1,0 +1,48 @@
+# /etc/fstab - Restored Configuration
+
+# System LVM partitions
+/dev/mapper/VG01-lvroot         /                       xfs     defaults        0 0
+UUID=<uuid> /boot         xfs     defaults        0 0
+/dev/mapper/VG01-lvhome         /home                   xfs     defaults        0 0
+/dev/mapper/VG01-lvtmp          /tmp                    xfs     defaults        0 0
+/dev/mapper/VG01-lvusr          /usr                    xfs     defaults        0 0
+/dev/mapper/VG01-lvvar          /var                    xfs     defaults        0 0
+/dev/mapper/VG01-lvswap         swap                    swap    defaults        0 0
+/dev/mapper/VG01-lvsysadmin     /sysadmin               xfs     defaults        0 0
+/dev/mapper/VG01-lvvarcrash     /var/crash              xfs     defaults        0 0
+/dev/mapper/VG01-lvmaxigent     /maxigent               xfs     defaults        0 0
+
+# Mount by UUID (Non-LVM)
+/dev/sdf1                       /u04                    xfs     defaults        0 0
+UUID=<uuid>       /u05    xfs     defaults        0 0
+UUID=<uuid>       /u06    xfs     defaults        0 0
+UUID=<uuid>       /u01    xfs     defaults        1 2
+UUID=<uuid>       /u02    ext4    defaults        0 0
+UUID=<uuid>       /u03    ext4    defaults        0 0
+
+# Bind mounts for SFTP folders
+/u01/ftp/files                  /home/userftp/sftp       none    bind,defaults        0 1
+/u01/ftp/files                  /home/adminftp/sftp      none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP    /home/SITE-XX-FTP/sftp   none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP    /home/SITE-XX-FTP/sftp   none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP      /home/SITE-XX-FTP/sftp     none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP      /home/SITE-XX-FTP/sftp     none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP    /home/SITE-XX-FTP/sftp   none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP  /home/SITE-XX-FTP/sftp none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP    /home/SITE-XX-FTP/sftp   none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP      /home/SITE-XX-FTP/sftp     none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP    /home/SITE-XX-FTP/sftp   none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP    /home/SITE-XX-FTP/sftp   none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP      /home/SITE-XX-FTP/sftp     none    bind,defaults        0 1

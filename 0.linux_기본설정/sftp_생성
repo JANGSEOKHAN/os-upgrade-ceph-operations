@@ -1,0 +1,31 @@
+# 그룹 생성 (이미 있다면 생략 가능)
+sudo groupadd -g 9999 adminftp
+
+# 사용자 생성 (nologin, 홈디렉토리 지정, UID 9999)
+sudo useradd -u 9999 -g adminftp -s /sbin/nologin -M --home /adminftp/sftp adminftp
+
+# 비밀번호 설정
+echo 'adminftp:<initial-password>' | sudo chpasswd
+
+# 홈 디렉토리 생성 및 권한 설정
+ sudo chown root:root /adminftp/sftp
+ sudo chmod 755 /adminftp/sftp
+
+
+sudo vi /etc/ssh/sshd_config
+
+Match User adminftp
+ChrootDirectory %h
+ForceCommand internal-sftp
+PermitTunnel no
+AllowAgentForwarding no
+AllowTcpForwarding no
+X11Forwarding no
+---
+adminftp:x:4871:
+SITE-XX-FTP:X:4873
+---
+adminftp:x:4869:4871::/home/adminftp:/sbin/nologin
+SITE-XX-FTP:x:4871:4873::/home/SITE-XX-FTP:/bin/bash
+
+systemctl restart sshd.service

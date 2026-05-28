@@ -1,0 +1,497 @@
+  ceph 설치
+tar -xvf ceph_package.tar
+
+sudo yum localinstall -y --disablerepo=\* *.rpm
+---------------------------------------------------------------------------
+0.host 설정
+sudo vi /etc/hosts
+
+<ceph-node-a-ip>  ceph-node-a
+<ceph-node-b-ip>  ceph-node-b
+<ceph-node-c-ip>  ceph-node-c
+
+#운영 계정 sudo 권한 확인
+sudo visudo
+
+#없을 시 추가 및 주석 해제
+%wheel  ALL=(ALL)       ALL
+sudo usermod -aG wheel <ops-user>
+
+#방화벽 내리기 필수
+systemctl disable firewalld
+systemctl stop firewalld
+
+#selinux 설정
+sudo vi /etc/selinux/config
+SELINUX=disabled
+재시작 해야 설정됨
+
+#더미 파일 만들어서 테스트
+dd if=/dev/zero of=dummyfile bs=1G count=5
+----------------------------------------------------------------------
+1. 모니터(MON) + 매니저(MGR) 초기화
+# UUID 생성
+uuidgen
+<ceph-cluster-fsid>
+
+sudo mkdir -p ceph
+
+# Ceph 설정 파일 생성
+sudo tee /etc/ceph/ceph.conf <<EOF
+[global]
+fsid = <ceph-cluster-fsid>
+mon_initial_members = ceph-node-a
+mon_host = <ceph-node-a-ip>:6789
+public_network = <private-ip>/24
+auth_cluster_required = cephx
+auth_service_required = cephx
+auth_client_required = cephx
+EOF
+
+sudo mkdir -p /home/<ops-user>/ceph
+
+# MON key
+sudo ceph-authtool --create-keyring /home/<ops-user>/ceph/ceph.mon.keyring --gen-key -n mon. --cap mon 'allow *'
+
+# Admin key
+sudo ceph-authtool --create-keyring /etc/ceph/ceph.client.admin.keyring \
+  --gen-key -n client.admin --cap mon 'allow *' --cap osd 'allow *' \
+  --cap mds 'allow *' --cap mgr 'allow *'
+
+# bootstrap-osd key
+sudo ceph-authtool --create-keyring /var/lib/ceph/bootstrap-osd/ceph.keyring \
+  --gen-key -n client.bootstrap-osd --cap mon 'profile bootstrap-osd' --cap mgr 'allow r'
+
+# 키 병합
+sudo ceph-authtool /home/<ops-user>/ceph/ceph.mon.keyring --import-keyring /etc/ceph/ceph.client.admin.keyring
+sudo ceph-authtool /home/<ops-user>/ceph/ceph.mon.keyring --import-keyring /var/lib/ceph/bootstrap-osd/ceph.keyring
+----------------------------------------------------------------------------------
+2.모니터 맵 생성 및 부트스트랩
+#monmap 생성
+sudo monmaptool --create \
+  --add ceph-node-a <ceph-node-a-ip>:6789 \
+  --fsid <ceph-cluster-fsid> \
+  /home/<ops-user>/ceph/monmap
+
+sudo -u ceph mkdir -p /var/lib/ceph/mon/ceph-ceph-node-a
+
+sudo chmod 755 /home/<ops-user>
+sudo chown -R ceph:ceph  /etc/ceph/
+sudo chown -R ceph:ceph /home/<ops-user>/ceph/
+sudo chown -R ceph:ceph /var/lib/ceph/
+
+sudo chmod 600 /home/<ops-user>/ceph/ceph.mon.keyring
+sudo chmod -R 755 /etc/ceph/ceph.client.admin.keyring
+sudo chmod 666 /home/<ops-user>/ceph/monmap
+
+sudo -u ceph ceph-mon --mkfs -i ceph-node-a --monmap /home/<ops-user>/ceph/monmap --keyring /home/<ops-user>/ceph/ceph.mon.keyring
+
+sudo chown -R ceph:ceph /var/lib/ceph/mon/ceph-ceph-node-a
+
+#ceph 데몬 설정
+sudo systemctl daemon-reload
+sudo systemctl start ceph-mon@ceph-node-a
+sudo systemctl enable ceph-mon@ceph-node-a
+sudo systemctl status ceph-mon@ceph-node-a
+
+#ceph 활성화 확인
+ceph -s
+-----------------------------------------------------------------------------------------------------------------------------
+3.mgr 설정
+
+#MGR 데이터 디렉토리 생성
+sudo mkdir -p /var/lib/ceph/mgr/ceph-ceph-node-a
+sudo chown -R ceph:ceph /var/lib/ceph/mgr/ceph-ceph-node-a
+
+#MGR keyring 생성 및 등록
+sudo ceph auth get-or-create mgr.ceph-node-a mon 'allow *' osd 'allow *' mds 'allow *' \
+  -o /var/lib/ceph/mgr/ceph-ceph-node-a/keyring
+
+#권한 정리
+sudo chown ceph:ceph /var/lib/ceph/mgr/ceph-ceph-node-a/keyring
+sudo chmod 600 /var/lib/ceph/mgr/ceph-ceph-node-a/keyring
+
+#실행되는지 확인
+sudo -u ceph ceph-mgr -f --cluster ceph --id ceph-node-a
+
+#인스턴스 단위로 override 추가 -> 안해도됨
+#sudo systemctl edit ceph-mgr@ceph-node-a.service
+#[Service]
+#Environment=CLUSTER=ceph
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now ceph-mgr@ceph-node-a
+sudo systemctl status ceph-mgr@ceph-node-a
+---------------------------------------------------------------------------------------------------
+#insecure global_id reclaim 경고 끄기
+sudo ceph config set mon auth_allow_insecure_global_id_reclaim false
+
+#msgr2 프로토콜 활성화: 안해도됨
+sudo ceph mon enable-msgr2
+
+#osd 사이즈 줄이기
+sudo ceph config set global osd_pool_default_size 1
+sudo ceph config set global osd_pool_default_min_size 1
+---------------------------------------------------------------------------------------------------
+4.mds 올리기
+#노드에 MDS 데이터 디렉토리 생성
+sudo mkdir -p /var/lib/ceph/mds/ceph-ceph-node-a
+sudo chown -R ceph:ceph /var/lib/ceph/mds/ceph-ceph-node-a
+
+#MDS keyring 생성
+sudo ceph auth get-or-create mds.ceph-node-a mon 'allow rwx' osd 'allow rwx' mds 'allow *' -o /var/lib/ceph/mds/ceph-ceph-node-a/keyring
+
+#권한 설정
+sudo chown ceph:ceph /var/lib/ceph/mds/ceph-ceph-node-a/keyring
+sudo chmod 600 /var/lib/ceph/mds/ceph-ceph-node-a/keyring
+
+#MDS 서비스 시작
+sudo systemctl daemon-reload
+sudo systemctl enable --now ceph-mds@ceph-node-a
+sudo systemctl status ceph-mds@ceph-node-a
+
+#만약 에러시 제거 후 다시 설치
+#sudo rm -rf /var/lib/ceph/mds/ceph-ceph-node-a/
+---------------------------------------------------------------------------------
+#노드1 mount 해체 후 디스크 재생성
+
+#마운트 해제
+sudo umount /u01
+sudo umount /home/*/sftp
+sudo wipefs -a /dev/sdc1
+
+#디스크 ceph-volume 생성
+sudo mkdir -p /var/lib/ceph/osd/ceph-0
+sudo ceph-volume lvm create --data /dev/sdc1
+
+#데몬 시작 및 정상 확인
+sudo systemctl enable ceph-osd@0
+sudo systemctl status ceph-osd@0
+ceph osd tree
+----------------------------------------------------------------------------------------
+#각 노드에서 MON, MGR, OSD 서비스 시작: 이미 되어있음
+sudo systemctl enable ceph-mon@ceph-node-a
+sudo systemctl enable ceph-mgr@ceph-node-a
+sudo systemctl enable ceph-mds@ceph-node-a
+sudo systemctl enable ceph-osd@0   # node1
+----------------------------------------------------------------------------------------
+#메타데이터 풀 / 데이터 풀 생성
+sudo ceph osd pool create cephfs_data
+sudo ceph osd pool create cephfs_metadata
+
+#파일시스템 생성
+sudo ceph fs new cephfs cephfs_metadata cephfs_data
+
+#확인
+sudo ceph fs status
+
+#디렉터리 생성
+sudo mkdir -p /u01
+
+#node1,2 동일하게 마운트
+sudo mount -t ceph <ceph-node-a-ip>:6789:/ /u01 -o name=admin,secret=`sudo ceph auth get-key client.admin`
+-----------------------------------------------------------------------------------------------------------------
+#원본 데이터 복원
+sudo mkdir -p /u01/ftp/
+
+sudo rsync -aHAX -W \
+--info=NAME,progress2,stats --inplace --numeric-ids /u02/ftp/ /u01/ftp 2>&1 | tee "/tmp/backup_0909"
+
+5시간 소요
+-----------------------------------------------------------------------------------------------------------------
+#마운트용 파일 생성
+sudo ceph auth get-key client.admin | sudo tee /etc/ceph/admin.secret
+sudo chmod 600 /etc/ceph/admin.secret
+
+#/etc/fstab 설정
+sudo vi /etc/fstab
+
+#이부분은 주석 처리
+#UUID=<uuid>       /u01    xfs     defaults        1 2
+
+#추가
+<ceph-node-a-ip>:6789:/ /u01 ceph name=admin,secretfile=/etc/ceph/admin.secret,_netdev 0 0
+
+# Bind mounts for SFTP folders
+/u01/ftp/files                  /home/userftp/sftp       none    bind,defaults        0 1
+/u01/ftp/files                  /home/adminftp/sftp      none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP    /home/SITE-XX-FTP/sftp   none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP    /home/SITE-XX-FTP/sftp   none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP      /home/SITE-XX-FTP/sftp     none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP      /home/SITE-XX-FTP/sftp     none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP    /home/SITE-XX-FTP/sftp   none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP  /home/SITE-XX-FTP/sftp none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP    /home/SITE-XX-FTP/sftp   none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP      /home/SITE-XX-FTP/sftp     none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP    /home/SITE-XX-FTP/sftp   none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP    /home/SITE-XX-FTP/sftp   none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP      /home/SITE-XX-FTP/sftp     none    bind,defaults        0 1
+
+#마운트 잠시 해제
+sudo umount /u01
+
+#다시 마운트
+sudo mount -a
+-----------------------------------------------------------------------------------------------------------------
+#대시보드 활성화
+sudo ceph mgr module enable dashboard
+
+#대시보드 활성화 상태 확인
+sudo ceph mgr module ls | grep dashboard
+
+#HTTPS 인증서 생성 (self-signed)
+sudo ceph dashboard create-self-signed-cert
+
+#비밀번호를 파일에 넣기
+sudo echo 'admin123' > /home/<ops-user>/admin_pass.txt
+
+#계정 생성
+sudo ceph dashboard set-login-credentials admin -i /home/<ops-user>/admin_pass.txt
+
+#유저 확인
+sudo ceph dashboard ac-user-show admin
+
+#서버 포트 확인
+ceph config get mgr mgr/dashboard/ssl_server_port
+
+#대시보드 포트 바꾸기 필요시
+ceph config set mgr mgr/dashboard/ssl_server_port 9443
+
+systemctl restart ceph-mgr@ceph-node-a
+
+#https://<ceph-node-c-ip>:8443/ 으로 접속
+---------------------------------------------------------------------------------------
+#노드1에서 파일들 /tmp 옮옮놓기
+ sudo cp /etc/ceph/ceph.conf /tmp
+ sudo cp /etc/ceph/ceph.client.admin.keyring /tmp
+ sudo cp /home/<ops-user>/ceph/ceph.mon.keyring /tmp
+ sudo cp /home/<ops-user>/ceph/monmap /tmp
+ sudo cp /var/lib/ceph/bootstrap-osd/ceph.keyring /tmp
+ sudo cp /etc/ceph/admin.secret /tmp
+sudo chmod 644 /tmp/ceph.keyring /tmp/ceph.mon.keyring /tmp/admin.secret
+------------------------------------------------------------------------------------
+***노드 추가 시 설정 방법***
+1.mon 추가 하기
+
+#노드1에서 노드2로 복사
+sudo scp /etc/ceph/ceph.conf <ops-user>@<ceph-node-b-ip>:/tmp
+sudo scp /etc/ceph/ceph.client.admin.keyring <ops-user>@<ceph-node-b-ip>:/tmp
+sudo scp /home/<ops-user>/ceph/ceph.mon.keyring <ops-user>@<ceph-node-b-ip>:/tmp
+sudo scp /home/<ops-user>/ceph/monmap <ops-user>@<ceph-node-b-ip>:/tmp
+sudo scp /var/lib/ceph/bootstrap-osd/ceph.keyring <ops-user>@<ceph-node-b-ip>:/tmp
+sudo scp /etc/ceph/admin.secret <ops-user>@<ceph-node-b-ip>:/tmp
+
+#노드2에서 파일 옮기기
+sudo mkdir -p /home/<ops-user>/ceph
+sudo mv /tmp/ceph.conf /etc/ceph/ceph.conf
+sudo mv /tmp/ceph.client.admin.keyring /etc/ceph/ceph.client.admin.keyring
+sudo mv /tmp/ceph.mon.keyring /home/<ops-user>/ceph/ceph.mon.keyring
+sudo mv /tmp/monmap /home/<ops-user>/ceph/monmap
+sudo mv /tmp/ceph.keyring /var/lib/ceph/bootstrap-osd/
+sudo mv /tmp/admin.secret /etc/ceph/admin.secret
+
+#권한 재설정
+sudo chown -R ceph:ceph /etc/ceph/
+sudo chown -R ceph:ceph /home/<ops-user>/ceph
+sudo chown -R ceph:ceph /var/lib/ceph/
+
+#ceph mon2 추하기
+sudo ceph-mon --mkfs -i ceph-node-b --monmap /home/<ops-user>/ceph/monmap --keyring /home/<ops-user>/ceph/ceph.mon.keyring
+
+#ceph mon2 시작하기
+sudo chown -R ceph:ceph /var/lib/ceph/mon/ceph-ceph-node-b
+sudo systemctl enable --now ceph-mon@ceph-node-b
+sudo systemctl status ceph-mon@ceph-node-b
+----------------------------------------------------------------------------------------------------------------------
+노드3 설정하기 (docker)
+#노드 3에 디렉토리 생성
+sudo mkdir -p /home/<ops-user>/ceph
+sudo mkdir -p /etc/ceph/
+sudo mkdir -p /var/lib/ceph/bootstrap-osd/
+
+#노드1에서 노드3로 복사
+sudo scp /etc/ceph/ceph.conf <ops-user>@<ceph-node-c-ip>:/tmp
+sudo scp /etc/ceph/ceph.client.admin.keyring <ops-user>@<ceph-node-c-ip>:/tmp
+sudo scp /home/<ops-user>/ceph/ceph.mon.keyring <ops-user>@<ceph-node-c-ip>:/tmp
+sudo scp /home/<ops-user>/ceph/monmap <ops-user>@<ceph-node-c-ip>:/tmp
+sudo scp /var/lib/ceph/bootstrap-osd/ceph.keyring <ops-user>@<ceph-node-c-ip>:/tmp
+sudo scp /etc/ceph/admin.secret <ops-user>@<ceph-node-c-ip>:/tmp
+
+#노드3 옮기기 (docker)
+sudo mv /tmp/ceph.conf /etc/ceph/ceph.conf
+sudo mv /tmp/ceph.client.admin.keyring /etc/ceph/ceph.client.admin.keyring
+sudo mv /tmp/ceph.mon.keyring /home/<ops-user>/ceph/ceph.mon.keyring
+sudo mv /tmp/monmap /home/<ops-user>/ceph/monmap
+sudo mv /tmp/ceph.keyring /var/lib/ceph/bootstrap-osd/
+sudo mv /tmp/admin.secret /etc/ceph/admin.secret
+
+#도커 내부에서 실행하기
+docker run -d --name ceph --net=host \
+-v /etc/ceph:/etc/ceph \
+-v /var/lib/ceph/:/var/lib/ceph/ \
+-v /home/<ops-user>/ceph/:/home/root/ \
+--privileged quay.io/ceph/ceph:v18.2.2 sleep infinity
+
+#도커 내부에 접속하기
+docker exec -it ceph bash
+
+#내부에서 생성 후 권한 변경
+mkdir -p /var/lib/ceph/mon/ceph-example-node-a
+chown -R ceph:ceph /var/lib/ceph/mon/ceph-example-node-a
+
+#mon3 생성하기
+ceph-mon --mkfs -i example-node-a --monmap /home/root/monmap --keyring /home/root/ceph.mon.keyring --mon-data /var/lib/ceph/mon/ceph-example-node-a
+
+chown -R ceph:ceph /etc/ceph
+chown -R ceph:ceph /var/lib/ceph
+chown -R ceph:ceph /home/root/ceph.mon.keyring
+chown -R ceph:ceph /home/root/monmap
+
+#mon3 시작하기
+sudo ceph-mon -f --cluster ceph --id example-node-a --setuser ceph --setgroup ceph &
+-------------------------------------------------------------------------------------------------------------------
+#Quorum 확인
+ceph -s
+ceph quorum_status --format json-pretty
+----------------------------------------------------------------------------------------------------------------------------
+2.mds 추가하기
+#노드2 설정
+sudo mkdir -p /var/lib/ceph/mds/ceph-ceph-node-b
+sudo chown -R ceph:ceph /var/lib/ceph/mds/ceph-ceph-node-b
+sudo ceph auth get-or-create mds.ceph-node-b mon 'allow rwx' osd 'allow rwx' mds 'allow *' -o /var/lib/ceph/mds/ceph-ceph-node-b/keyring
+
+sudo ceph auth get mds.ceph-node-b -o /var/lib/ceph/mds/ceph-ceph-node-b/keyring
+sudo chown ceph:ceph /var/lib/ceph/mds/ceph-ceph-node-b/keyring
+sudo chmod 600 /var/lib/ceph/mds/ceph-ceph-node-b/keyring
+sudo systemctl enable --now ceph-mds@ceph-node-b
+sudo systemctl status ceph-mds@ceph-node-b
+
+#만약 권한 잇으면 변경
+sudo ceph auth caps mds.ceph-node-b mon 'allow rwx' osd 'allow rwx' mds 'allow *'
+
+#확인
+ceph -s
+-------------------------------------------------------------------------------------------------------------------
+3.mgr 추가하기
+#mgr도 2개 노드로 설정
+sudo mkdir -p /var/lib/ceph/mgr/ceph-ceph-node-b
+sudo chown -R ceph:ceph /var/lib/ceph/mgr/ceph-ceph-node-b
+sudo ceph auth get-or-create mgr.ceph-node-b mon 'allow *' osd 'allow *' mds 'allow *' -o /var/lib/ceph/mgr/ceph-ceph-node-b/keyring
+sudo systemctl enable --now ceph-mgr@ceph-node-b
+systemctl status ceph-mgr@ceph-node-b
+
+#확인
+ceph -s
+mgr: ceph-node-a(active, since 4m), standbys: ceph-node-b
+-------------------------------------------------------------------------------------------------------------------
+4.osd 추가하기
+#node2에서 설정
+#사이즈 줄이기
+sudo ceph osd pool set cephfs_metadata size 2
+sudo ceph osd pool set cephfs_data size 2
+
+#마운트 해제
+sudo umount /u01
+sudo umount /home/*/sftp
+sudo wipefs -a /dev/sdc1
+
+#디스크 ceph-volume 생성
+sudo mkdir -p /var/lib/ceph/osd/ceph-1
+sudo ceph-volume lvm create --data /dev/sdc1
+
+#데몬 정상 확인
+sudo systemctl status ceph-osd@1   # node2
+sudo systemctl enable ceph-osd@1
+
+#확인
+sudo ceph -s
+
+#OSD 확인
+sudo ceph osd tree
+------------------------------------------------------------------------------------------------------------------------------
+데이터 옮기기기
+
+#디렉터리 생성
+sudo mkdir -p /u01/ftp/
+
+/usr/bin/time -v sudo rsync -aHAX -W \
+--info=NAME,progress2,stats --inplace --numeric-ids /u02/ftp/ /u01/ftp 2>&1 | tee "/tmp/backup_0910"
+
+#데이터 옮기기 약 5시간 소요 예상
+-------------------------------------------------------------------------------------------------------
+마운트 설정
+
+#노드1 잠시 해제
+sudo umount /u01
+sudo umount /home/*/sftp
+
+#다시 마운트
+sudo mount -t ceph <ceph-node-a-ip>:6789,<ceph-node-b-ip>:6789:/ /u01 -o name=admin,secret=`sudo ceph auth get-key client.admin`
+
+#노드2 마운트
+sudo mount -t ceph <ceph-node-a-ip>:6789,<ceph-node-b-ip>:6789:/ /u01 -o name=admin,secret=`sudo ceph auth get-key client.admin`
+
+-----------------------------------------------------------------------------------------------
+fstab 설정
+
+sudo vi /etc/fstab
+#이부분은 주석 처리
+#UUID=<uuid>       /u01    xfs     defaults        1 2
+
+#추가
+<ceph-node-a-ip>:6789,<ceph-node-b-ip>:6789:/ /u01 ceph name=admin,secretfile=/etc/ceph/admin.secret,_netdev 0 0
+
+#마운트
+sudo systemctl daemon-reload
+sudo mount -a
+------------------------------------------------------------------------------
+#사이즈 수 변경하기
+ceph osd pool set .mgr size 2
+ceph osd pool set cephfs_data size 2
+ceph osd pool set cephfs_metadata size 2
+ceph config set global osd_pool_default_size 2
+ceph config set global osd_pool_default_min_size 1
+
+#중요!
+세개의 서버 다 ceph.conf 수정해줘야함! -> 170 죽으면 동작을 안함 나머지 죽으면 괜찮은데
+
+sudo tee /etc/ceph/ceph.conf <<EOF
+[global]
+fsid = <ceph-cluster-fsid>
+mon_initial_members = ceph-node-a,ceph-node-b,example-node-a ##수정
+mon_host = <ceph-node-a-ip>:6789,<ceph-node-b-ip>:6789,<private-ip>:6789 ##수정
+public_network = <private-ip>/24
+auth_cluster_required = cephx
+auth_service_required = cephx
+auth_client_required = cephx
+EOF
+-------------------------------------------------------------------------------------------------------------
+
+#재시작 방법
+sudo systemctl stop ceph-mon@ceph-node-a
+systemctl stop ceph-mds@ceph-node-a
+
+sudo systemctl stop ceph-osd@0
+sudo systemctl stop ceph-osd@1
+
+sudo rm -rf /var/lib/ceph
+sudo rm -rf /etc/ceph
+sudo rm -rf /home/<ops-user>/ceph
+
+#파일시스템 ceph 해제 하기
+sudo umount /u01/
+
+sudo xfs_repair /dev/sda1
+ sudo lvremove /dev/ceph

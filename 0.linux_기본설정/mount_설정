@@ -1,0 +1,90 @@
+sudo umount /BACKUP
+# 사용 중 오류 나면 무엇이 잡고 있는지 확인 후 종료
+sudo fuser -vm /BACKUP    # 또는: sudo lsof +f -- /BACKUP
+#uuid 확인 
+sudo blkid -s UUID -o value /dev/sda2
+<uuid>
+
+
+sudo mount /dev/sda2 /u01
+df -hT | egrep '/u01|/BACKUP'
+
+
+▶ 2-1. 원본 디렉터리 생성
+
+sudo mkdir -p /u01 /u02 /u03 /u04 /u05 /u06
+
+for name in SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP \
+SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP \
+SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP \
+SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP
+do
+sudo mkdir -p /u01/ftp/files/$name
+done
+----------------------------------------------------------
+▶ 2-2. 바인드 마운트 대상 디렉터리 생성
+sudo mkdir -p /home/userftp/sftp
+sudo mkdir -p /home/adminftp/sftp
+
+그리고 FTP 계정별 디렉토리도 생성:
+for name in SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP \
+SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP \
+SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP \
+SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP SITE-XX-FTP
+do
+sudo  mkdir -p /home/$name/sftp
+done
+------------------------------------------
+vi /etc/fstab
+
+# /etc/fstab - Restored Configuration
+
+# System LVM partitions
+/dev/mapper/VG01-lvroot         /                       xfs     defaults        0 0
+UUID=<uuid> /boot         xfs     defaults        0 0
+/dev/mapper/VG01-lvhome         /home                   xfs     defaults        0 0
+/dev/mapper/VG01-lvtmp          /tmp                    xfs     defaults        0 0
+/dev/mapper/VG01-lvusr          /usr                    xfs     defaults        0 0
+/dev/mapper/VG01-lvvar          /var                    xfs     defaults        0 0
+/dev/mapper/VG01-lvswap         swap                    swap    defaults        0 0
+/dev/mapper/VG01-lvsysadmin     /sysadmin               xfs     defaults        0 0
+/dev/mapper/VG01-lvvarcrash     /var/crash              xfs     defaults        0 0
+/dev/mapper/VG01-lvmaxigent     /maxigent               xfs     defaults        0 0
+
+# Mount by UUID (Non-LVM)
+/dev/sdf1                       /u04                    xfs     defaults        0 0
+UUID=<uuid>       /u05    xfs     defaults        0 0
+UUID=<uuid>       /u06    xfs     defaults        0 0
+UUID=<uuid>       /u01    xfs     defaults        1 2
+UUID=<uuid>       /u02    ext4    defaults        0 0
+UUID=<uuid>       /u03    ext4    defaults        0 0
+
+# Bind mounts for SFTP folders
+/u01/ftp/files                  /home/userftp/sftp       none    bind,defaults        0 1
+/u01/ftp/files                  /home/adminftp/sftp      none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP    /home/SITE-XX-FTP/sftp   none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP    /home/SITE-XX-FTP/sftp   none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP      /home/SITE-XX-FTP/sftp     none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP      /home/SITE-XX-FTP/sftp     none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP    /home/SITE-XX-FTP/sftp   none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP  /home/SITE-XX-FTP/sftp none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP    /home/SITE-XX-FTP/sftp   none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP      /home/SITE-XX-FTP/sftp     none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP    /home/SITE-XX-FTP/sftp   none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP    /home/SITE-XX-FTP/sftp   none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP     /home/SITE-XX-FTP/sftp    none    bind,defaults        0 1
+/u01/ftp/files/SITE-XX-FTP      /home/SITE-XX-FTP/sftp     none    bind,defaults        0 1
+----------------------------------------------------------------------
+#마운트 확인
+sudo mount -a

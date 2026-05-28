@@ -1,0 +1,87 @@
+✅ 1. yum으로 설치한 경우 (패키지 관리)
+
+Oracle Linux 7은 기본적으로 yum 사용합니다.
+
+서비스 중지
+sudo systemctl stop glusterd haproxy keepalived nginx
+sudo systemctl disable glusterd haproxy keepalived nginx
+
+패키지 제거
+sudo yum remove -y glusterfs* haproxy keepalived nginx 
+
+설정 및 데이터 삭제
+# GlusterFS
+sudo rm -rf /etc/glusterfs /var/lib/glusterd /var/log/glusterfs
+sudo rm -rf /etc/glusterfs /var/lib/glusterd /var/log/glusterfs
+
+# HAProxy
+sudo rm -rf /etc/haproxy /var/lib/haproxy /var/log/haproxy
+
+# Keepalived
+sudo rm -rf /etc/keepalived
+
+# Nginx
+sudo rm -rf /etc/nginx /var/log/nginx /var/cache/nginx
+
+✅ 2. yum을 안 쓰고 직접 설치한 경우 (소스 컴파일, tar.gz, 바이너리 복사)
+
+이 경우는 자동 추적이 안 되므로 수동으로 삭제해야 합니다.
+
+(1) 설치 경로 확인
+
+보통 소스 컴파일 시 ./configure --prefix=/usr/local/XXX 옵션을 씁니다.
+기본값은 /usr/local/ 아래입니다.
+
+확인 명령어:
+
+which glusterfsd haproxy keepalived nginx
+whereis glusterfs haproxy keepalived nginx
+
+
+여기서 나온 실행파일 경로 기반으로 삭제합니다.
+
+(2) 실행파일 삭제
+# 예시: /usr/local/bin 이나 /usr/sbin 등에 들어간 경우
+sudo rm -f /usr/local/bin/gluster* /usr/local/sbin/gluster*
+sudo rm -f /usr/sbin/haproxy /usr/sbin/keepalived /usr/sbin/nginx
+
+(3) 라이브러리/헤더 삭제
+sudo rm -rf /usr/local/lib/libgluster* /usr/local/include/glusterfs
+sudo rm -rf /usr/local/lib/libhaproxy* /usr/local/include/haproxy*
+sudo rm -rf /usr/local/lib/libnginx* /usr/local/include/nginx*
+
+(4) 설정파일/데이터 삭제
+
+(패키지 설치와 동일)
+
+sudo rm -rf /etc/glusterfs /var/lib/glusterd /var/log/glusterfs
+sudo rm -rf /etc/haproxy /var/lib/haproxy /var/log/haproxy
+sudo rm -rf /etc/keepalived
+sudo rm -rf /etc/nginx /var/log/nginx /var/cache/nginx
+
+(5) systemd 서비스 파일 삭제
+
+컴파일 설치 후 수동으로 systemd 등록했으면 직접 지워야 합니다.
+
+sudo rm -f /etc/systemd/system/glusterd.service
+sudo rm -f /etc/systemd/system/haproxy.service
+sudo rm -f /etc/systemd/system/keepalived.service
+sudo rm -f /etc/systemd/system/nginx.service
+sudo rm -rf /usr/lib/system/systemd/haproxy.servic
+sudo systemctl daemon-reexec
+
+✅ 3. 검증
+which glusterfs haproxy keepalived nginx
+systemctl list-unit-files | egrep "gluster|haproxy|keepalived|nginx"
+rpm -qa | egrep "gluster|haproxy|keepalived|nginx"
+
+sudo yum remove ceph ceph-common ceph-mds ceph-mgr ceph-mon ceph-osd
+sudo rm -rf /var/lib/ceph
+sudo rm -rf /etc/ceph
+sudo rm -rf /home/<ops-user>/ceph/
+sudo systemctl disable ceph-osd.target
+sudo systemctl disable ceph-mds.target
+sudo systemctl disable ceph-mgr.target
+sudo systemctl disable ceph-mon.target
+
+

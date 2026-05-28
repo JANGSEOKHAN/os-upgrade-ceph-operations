@@ -1,6 +1,6 @@
 # HAProxy 설치 및 운영 설정
 
-HAProxy를 L4/TCP proxy로 구성해 application node로 트래픽을 분산하는 설정 가이드입니다.
+HAProxy를 L4/TCP proxy로 구성해 application node로 트래픽을 분산하는 설정 기록입니다.
 
 ## 주요 설정
 

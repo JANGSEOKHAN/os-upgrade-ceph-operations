@@ -1,0 +1,136 @@
+0. 설치
+sudo yum localinstall -y --disablerepo=\* *.rpm
+make TARGET=linux-glibc USE_OPENSSL=1 USE_ZLIB=1 USE_PCRE2=1 USE_SYSTEMD=1
+
+sudo make install
+-------------------------------------------------------------------------
+
+1. HAProxy 빌드 후 기본 구조
+sudo mkdir -p /etc/haproxy
+sudo mkdir -p /var/lib/haproxy
+sudo touch /var/lib/haproxy/stats
+sudo mkdir -p /var/run/haproxy
+
+#프로세스 확인용
+ls -ld /var/run/haproxy /var/run/haproxy.pid
+sudo touch /var/run/haproxy.pid
+sudo chown haproxy:haproxy /var/run/haproxy.pid
+
+#로그 확인
+journalctl -xeu haproxy
+
+#사용자 없으면 생성
+sudo groupadd -r haproxy
+sudo useradd -r -g haproxy haproxy
+
+sudo chown -R haproxy:haproxy /var/lib/haproxy
+sudo chown -R haproxy:haproxy /var/run/haproxy
+sudo chown -R haproxy:haproxy /etc/haproxy
+------------------------------------------------------------------------------------------------
+2. sudo vi /etc/haproxy/haproxy.cfg
+global
+    log         127.0.0.1 local2
+    chroot      /var/lib/haproxy
+    pidfile     /var/run/haproxy.pid
+    maxconn     4000
+    user        haproxy
+    group       haproxy
+    daemon
+    stats socket /var/lib/haproxy/stats mode 660 level admin
+
+# 기본값은 TCP로 (가장 무난)
+defaults
+    mode                    tcp
+    log                     global
+    option                  dontlognull
+    option                  redispatch
+    retries                 3
+    timeout connect         10s
+    timeout client          1m
+    timeout server          1m
+    timeout check           10s
+    maxconn                 3000
+
+# 상태 페이지는 HTTP 모드로 따로 지정
+listen hastats
+    mode http
+    bind *:8081
+    stats enable
+    stats show-legends
+    stats uri /haproxy-status
+    stats refresh 10s
+    stats auth <stats-user>:<stats-password>
+
+# HTTP 프록시
+frontend http-in
+    bind *:80
+    mode http
+    option httplog
+    option forwardfor
+    default_backend nginx_http_proxy
+
+backend nginx_http_proxy
+    mode http
+    balance roundrobin
+    option forwardfor
+    server ceph-node-a <app-node-a-ip>:8080 check
+    server ceph-node-b <app-node-b-ip>:8080 check
+
+# HTTPS 프록시
+frontend https-in
+    bind *:443
+    mode tcp
+    option tcplog
+    default_backend nginx_https_proxy
+
+backend nginx_https_proxy
+    mode tcp
+    balance roundrobin
+    option tcp-check
+    server ceph-node-a <app-node-a-ip>:8443 check
+    server ceph-node-b <app-node-b-ip>:8443 check
+
+# SSH/SFTP 프록시
+frontend sftp-in
+    bind *:10022
+    mode tcp
+    option tcplog
+    default_backend ssh_proxy
+
+backend ssh_proxy
+    mode tcp
+    balance roundrobin
+    option tcp-check
+    server ceph-node-a <app-node-a-ip>:22 check
+    server ceph-node-b <app-node-b-ip>:22 check
+------------------------------------------------------------------------------------------------
+#구문에러 있는지 확인
+/usr/local/sbin/haproxy -f /etc/haproxy/haproxy.cfg -c
+
+#오류시 확인
+sudo /usr/local/sbin/haproxy -f /etc/haproxy/haproxy.cfg -db
+------------------------------------------------------------------------------------------------
+3. systemd 유닛 파일 (/etc/systemd/system/haproxy.service)
+
+sudo vi /etc/systemd/system/haproxy.service
+[Unit]
+Description=HAProxy Load Balancer
+After=network.target
+
+[Service]
+ExecStart=/usr/local/sbin/haproxy -Ws -f /etc/haproxy/haproxy.cfg -p /var/run/haproxy.pid
+ExecReload=/usr/local/sbin/haproxy -f /etc/haproxy/haproxy.cfg -c -q
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
+------------------------------------------------------------------------------------------------
+4. 실행 방법
+# 유닛 반영
+sudo systemctl daemon-reload
+# 자동시작 등록
+sudo systemctl enable haproxy
+# 즉시 실행
+sudo systemctl start haproxy
+# 상태 확인
+sudo systemctl status haproxy

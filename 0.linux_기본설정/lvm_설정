@@ -1,0 +1,67 @@
+# 확인 작업
+lsblk
+fdisk -l
+pvdisplay
+vgdisplay
+lvdisplay
+
+LVM 재구성 순서 (Oracle Linux 8 설치 후)
+🔹 (1) LVM 설치
+Oracle Linux 8 설치 후 LVM 툴이 없으면 설치:
+sudo dnf install -y lvm2
+
+🔹 (2) Physical Volume 생성
+pvcreate /dev/sda2
+
+🔹 (3) Volume Group 생성
+vgcreate VG01 /dev/sda2
+
+🔹 (4) Logical Volume 생성
+# root
+lvcreate -L 30G -n lvroot VG01
+# home
+lvcreate -L 20G -n lvhome VG01
+# usr
+lvcreate -L 10G -n lvusr VG01
+# var
+lvcreate -L 10G -n lvvar VG01
+# tmp
+lvcreate -L 10G -n lvtmp VG01
+# sysadmin
+lvcreate -L 10G -n lvsysadmin VG01
+# var/crash
+lvcreate -L 20G -n lvvarcrash VG01
+# maxigent
+lvcreate -L 5G -n lvmaxigent VG01
+# swap
+lvcreate -L 16G -n lvswap VG01
+
+🔹 (5) 파일시스템 생성
+# xfs
+mkfs.xfs /dev/VG01/lvroot
+mkfs.xfs /dev/VG01/lvhome
+mkfs.xfs /dev/VG01/lvusr
+mkfs.xfs /dev/VG01/lvvar
+mkfs.xfs /dev/VG01/lvtmp
+mkfs.xfs /dev/VG01/lvsysadmin
+mkfs.xfs /dev/VG01/lvvarcrash
+mkfs.xfs /dev/VG01/lvmaxigent
+
+# swap은 따로
+mkswap /dev/VG01/lvswap
+🔹 (6) 마운트 및 fstab 설정
+/mnt/newroot 등으로 마운트해 chroot 설치하거나
+
+OS 설치 중 수동 파티션 설정(advanced) 메뉴에서 LVM 장치로 수동 설정 가능
+
+설치 후 /etc/fstab에 다음과 같이 수동으로 등록:
+/dev/mapper/VG01-lvroot /                       xfs     defaults        0 0
+UUID=<UUID-boot>         /boot                  xfs     defaults        0 0
+/dev/mapper/VG01-lvhome  /home                  xfs     defaults        0 0
+/dev/mapper/VG01-lvtmp   /tmp                   xfs     defaults        0 0
+/dev/mapper/VG01-lvusr   /usr                   xfs     defaults        0 0
+/dev/mapper/VG01-lvvar   /var                   xfs     defaults        0 0
+/dev/mapper/VG01-lvsysadmin /sysadmin           xfs     defaults        0 0
+/dev/mapper/VG01-lvvarcrash /var/crash          xfs     defaults        0 0
+/dev/mapper/VG01-lvmaxigent /maxigent           xfs     defaults        0 0
+/dev/mapper/VG01-lvswap  swap                   swap    defaults        0 0

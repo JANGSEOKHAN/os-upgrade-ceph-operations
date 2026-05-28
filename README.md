@@ -1,7 +1,7 @@
-# Oracle Linux 업그레이드 및 Ceph 스토리지 운영 가이드
+# Oracle Linux 업그레이드 및 Ceph 스토리지 운영 기록
 
-Oracle Linux 서버 업그레이드와 Ceph 스토리지 운영을 함께 다루는 인프라 운영 가이드입니다.
-OS 기본 설정, 프록시/가용성 구성, CephFS mount, 운영 점검 항목을 하나의 흐름으로 정리했습니다.
+Oracle Linux 서버 업그레이드와 Ceph 스토리지 구축/운영 과정에서 정리한 작업 기록입니다.
+OS 기본 설정, 프록시/가용성 구성, CephFS mount, 운영 점검 항목을 실제 작업 흐름에 가깝게 정리했습니다.
 
 ## 작업 범위
 
@@ -16,18 +16,35 @@ OS 기본 설정, 프록시/가용성 구성, CephFS mount, 운영 점검 항목
 ```text
 0.linux_기본설정/
   README.md                  # network, user, fstab, LVM, mount, SSH, sysctl 등 기본 설정
+  내부망_패키지_외부망에서받기
+  사용자_생성
+  fstab_설정
+  linux_network_설정
+  lvm_설정
+  mount_설정
+  selinux_설정
+  sftp_생성
+  ssh_설정
+  sysctl.conf_설정
 1.기존데몬삭제/
   README.md                  # 기존 daemon/service 정리 절차
+  datemon_delete
 2.haproxy_설치/
   README.md                  # HAProxy L4 proxy, health check, stats 설정 설명
+  haproxy_설정
 3.nginx_설치/
   README.md                  # Nginx proxy/static config 운영 포인트
+  nginx_설정
 4.keepalived_설치/
   README.md                  # MASTER/BACKUP, VRRP, VIP failover 구성
+  master_설정
+  backup_설정
 5.ceph_설정/
   README.md                  # Ceph monitor, manager, OSD, CephFS mount 운영
+  ceph_설정
 6.파일백업/
   README.md                  # rsync 기반 파일 백업/이관 절차
+  파일백업
 docs/
   os-upgrade-checklist.md   # OS 업그레이드 전후 점검 절차
   ceph-storage-ops.md       # Ceph 구성값과 운영 확인 명령
@@ -77,7 +94,7 @@ examples/
 | `authentication` | VRRP peer 간 상태 교환에 사용할 인증 설정입니다. |
 | `virtual_ipaddress` | 장애 전환 시 active node에 올라오는 service VIP입니다. |
 
-## Ceph Storage Operations
+## Ceph 스토리지 구축 및 운영 기록
 
 Ceph는 monitor, manager, OSD 역할이 분리되어 있어 각 역할의 상태를 함께 확인해야 합니다.
 
@@ -97,6 +114,23 @@ Ceph는 monitor, manager, OSD 역할이 분리되어 있어 각 역할의 상태
 | `auth_cluster_required` | cluster 내부 인증 방식을 정의합니다. 보통 `cephx`를 사용합니다. |
 | `secretfile` | CephFS mount에 사용할 client secret file 경로입니다. 권한은 최소화해야 합니다. |
 | `_netdev` | 네트워크가 준비된 뒤 mount되도록 OS 부팅 순서를 보정합니다. |
+
+## Ceph 스토리지 구축 흐름
+
+Ceph 구축 기록은 [`5.ceph_설정/ceph_설정`](5.ceph_%EC%84%A4%EC%A0%95/ceph_%EC%84%A4%EC%A0%95)에 단계별 명령 형태로 정리했습니다.
+
+| 단계 | 내용 |
+| --- | --- |
+| 패키지 준비 | 내부망 환경을 고려해 Ceph RPM 패키지를 로컬 설치하고 기본 host mapping을 정리합니다. |
+| MON/MGR 초기화 | `ceph.conf`에 `fsid`, `mon_initial_members`, `mon_host`, `public_network`, `cephx` 인증 정책을 정의합니다. |
+| Keyring 구성 | MON, Admin, bootstrap-osd keyring을 생성하고 mon keyring에 병합합니다. |
+| Monmap 생성 | `monmaptool`로 monitor map을 만들고 `ceph-mon --mkfs`로 첫 monitor를 부트스트랩합니다. |
+| MGR/MDS 구성 | manager daemon과 CephFS metadata server를 구성하고 systemd service로 기동합니다. |
+| OSD 구성 | OSD data directory를 만들고 OSD service를 등록해 object storage 계층을 구성합니다. |
+| CephFS 구성 | metadata/data pool을 생성하고 `ceph fs new`로 CephFS를 구성합니다. |
+| Mount/Fstab | application server에서 CephFS를 mount하고 `_netdev`, `secretfile` 기반 fstab 설정을 적용합니다. |
+| 확장 작업 | 추가 monitor, MDS, MGR, OSD를 순차적으로 추가하고 pool replication size를 조정합니다. |
+| 운영 확인 | `ceph -s`, `ceph osd tree`, `ceph fs status`, mount read/write test로 상태를 검증합니다. |
 
 ## Validation Commands
 

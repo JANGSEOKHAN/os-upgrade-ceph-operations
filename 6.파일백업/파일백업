@@ -1,0 +1,38 @@
+
+09:06 backup_20250820_084533.log
+
+ftp/files/<service-data-path>/<artifact-file>.exe
+        858.49M  44%   24.66MB/s    0:00:43 
+
+#시간
+export TIMEOUT=0
+
+#로그파일
+LOGFILE="/var/log/backup_$(date +'%Y%m%d_%H%M%S').log"
+
+#파일백업 개선 버전 -> 다른서버에서 백업시
+/usr/bin/time -v sudo rsync -aHAX --numeric-ids \
+--info=NAME,progress2,stats \
+--append-verify   --inplace --no-compress \
+-e "ssh -T -c aes128-gcm@openssh.com -o Compression=no -o StrictHostKeyChecking=no -o ControlMaster=auto -o ControlPersist=2m" \
+/u01/ftp/ <ops-user>@<backup-target-ip>:/u03/ftp/ 2>&1 | tee "/tmp/backup_0821_0902"
+
+#같은 서버에서 백업
+sudo rsync -aHAX -W \
+--info=NAME,progress2,stats --inplace --numeric-ids /u01/ftp/ /u02/ftp 2>&1 | tee "/tmp/backup_0826"
+
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+#crontab 등록
+
+ssh-keygen -t rsa -b 2048
+
+ssh-copy-id <ops-user>@<backup-target-ip>
+
+crontab -e
+#서비스 데이터 백업 1일 1회
+0 0 * * * /usr/bin/time -v /usr/bin/rsync -aHAX --numeric-ids --info=NAME,progress2,stats --append-verify --inplace --no-compress -e "ssh -T -c aes128-gcm@openssh.com -o Compression=no -o StrictHostKeyChecking=no -o ControlMaster=auto -o ControlPersist=2m" /u01/ftp/ <ops-user>@<backup-target-ip>:/u03/ftp/ 2>&1 | /usr/bin/tee "/u01/ftp/files/backup_log/backup_$(/bin/date +\%Y_\%m_\%d).log"
+
+#PlasticSCM BACKUP 1일1번 
+0 0 * * * /usr/bin/time -v /usr/bin/rsync -aHAX --numeric-ids --info=NAME,progress2,stats --append-verify --inplace --no-compress -e "ssh -T -c aes128-gcm@openssh.com -o Compression=no -o StrictHostKeyChecking=no -o ControlMaster=auto -o ControlPersist=2m" /u04/plasticscm/ <ops-user>@<backup-target-ip>:/u03/plasticscm_backup/ 2>&1 | /usr/bin/tee "/u04/plasticscm_backup/log/$(/bin/date +\%Y_\%m_\%d).log"
+
+
